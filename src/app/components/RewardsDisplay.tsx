@@ -8,6 +8,7 @@ import {
 
 interface RewardsDisplayProps {
   totalPoints: number;
+  globalXp: number;
   totalStreak: number;
   completedToday: number;
   totalHabits: number;
@@ -15,6 +16,7 @@ interface RewardsDisplayProps {
 
 export function RewardsDisplay({
   totalPoints,
+  globalXp,
   totalStreak,
   completedToday,
   totalHabits,
@@ -45,9 +47,16 @@ export function RewardsDisplay({
           <div>
             <p className="text-white/60 text-sm mb-1">Total Points</p>
             <p className="text-3xl font-bold text-white">{totalPoints}</p>
-            <p className="text-amber-300 text-xs mt-1 font-semibold tracking-wide uppercase">
-              Level {level} • {getLevelTitle(level)}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-amber-300 text-[10px] font-bold tracking-wide uppercase">
+                Level {level} • {getLevelTitle(level)}
+              </p>
+              {globalXp > 0 && (
+                <span className="text-white/30 text-[9px] font-medium border border-white/10 px-1.5 rounded-full">
+                  {globalXp} Consolidated
+                </span>
+              )}
+            </div>
           </div>
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center shadow-lg shadow-amber-500/50">
             <Trophy className="w-8 h-8 text-white" />

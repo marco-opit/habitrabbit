@@ -3,9 +3,17 @@ export interface Habit {
   name: string;
   icon: string;
   recurrence: string;
+  targetCount: number;
+  targetPeriod: "daily" | "weekly" | "monthly";
   streak: number;
   points: number;
   lastCompleted: string | null;
   completionHistory: string[];
   createdAt: string;
+}
+
+export interface Profile {
+  id: string;
+  global_xp: number;
+  last_consolidated: string;
 }

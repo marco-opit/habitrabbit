@@ -6,6 +6,7 @@ interface DeleteConfirmationModalProps {
     onClose: () => void;
     onConfirm: () => void;
     habitName: string;
+    createdAt: string;
 }
 
 export function DeleteConfirmationModal({
@@ -13,7 +14,10 @@ export function DeleteConfirmationModal({
     onClose,
     onConfirm,
     habitName,
+    createdAt,
 }: DeleteConfirmationModalProps) {
+    const ageInDays = (new Date().getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    const isStable = ageInDays >= 7;
     return (
         <AnimatePresence>
             {isOpen && (
@@ -47,7 +51,15 @@ export function DeleteConfirmationModal({
                                 <p className="text-white/60 mb-8 leading-relaxed">
                                     Are you sure you want to delete <span className="text-white font-semibold">"{habitName}"</span>?
                                     <br /><br />
-                                    This action is <span className="text-red-400 font-bold uppercase tracking-wider">irreversible</span>. You will lose all your progress and streaks forever.
+                                    {isStable ? (
+                                        <span className="text-emerald-400/80 text-sm">
+                                            🛡️ This habit is over 7 days old. Your earned points will be <span className="font-bold">permanently saved</span> to your Global XP.
+                                        </span>
+                                    ) : (
+                                        <span className="text-orange-400/80 text-sm">
+                                            ⚠️ This habit is less than 7 days old. If you delete it now, you will <span className="font-bold">lose all points</span> associated with it.
+                                        </span>
+                                    )}
                                 </p>
 
                                 <div className="grid grid-cols-2 gap-3 w-full">

@@ -10,12 +10,13 @@ import { Navigation } from "./components/Navigation";
 import { Dashboard } from "./components/Dashboard";
 import { Auth } from "./components/Auth";
 import { supabase } from "../lib/supabase";
-import { Habit } from "./types";
+import { Habit, Profile } from "./types";
 import { Session } from "@supabase/supabase-js";
 import { calculateLevel } from "../lib/leveling";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [habits, setHabits] = useState<Habit[]>([]);
   const prevLevelRef = useRef<number | null>(null);
 
@@ -38,38 +39,102 @@ export default function App() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [currentPage, setCurrentPage] = useState<"habits" | "dashboard">("habits");
 
-  // Load habits from Supabase
+  // Load habits and profile from Supabase
   useEffect(() => {
     if (!session) return;
 
-    const fetchHabits = async () => {
-      const { data, error } = await supabase
+    const fetchData = async () => {
+      let habitsToConsolidate: Habit[] = [];
+
+      // 1. Fetch Habits
+      const { data: habitData, error: habitError } = await supabase
         .from('habits')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error("Failed to fetch habits:", error);
-      } else if (data) {
-        const mappedData = data.map((h: any) => ({
+      if (habitError) {
+        console.error("Failed to fetch habits:", habitError);
+      } else if (habitData) {
+        habitsToConsolidate = habitData.map((h: any) => ({
           id: h.id,
           name: h.name,
           icon: h.icon,
           recurrence: h.recurrence,
+          targetCount: h.target_count || 1,
+          targetPeriod: h.target_period || 'daily',
           streak: h.streak,
           points: h.points,
           lastCompleted: h.last_completed,
           completionHistory: h.completion_history || [],
           createdAt: h.created_at,
         }));
-        setHabits(mappedData);
+        setHabits(habitsToConsolidate);
+      }
+
+      // 2. Fetch Profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Failed to fetch profile:", profileError);
+      } else if (profileData) {
+        setProfile(profileData);
+
+        // 3. Weekly Consolidation Check
+        const lastConsolidated = new Date(profileData.last_consolidated).getTime();
+        const now = new Date().getTime();
+        const daysSinceLast = (now - lastConsolidated) / (1000 * 60 * 60 * 24);
+
+        if (daysSinceLast >= 7 && habitsToConsolidate.length > 0) {
+          await consolidateXP(profileData, habitsToConsolidate);
+        }
       }
     };
 
-    fetchHabits();
+    fetchData();
   }, [session]);
 
-  const totalPoints = habits.reduce((sum, habit) => sum + habit.points, 0);
+  const consolidateXP = async (currentProfile: Profile, currentHabits: Habit[]) => {
+    const totalHabitPoints = currentHabits.reduce((sum, h) => sum + h.points, 0);
+    if (totalHabitPoints === 0) return;
+
+    const newGlobalXP = currentProfile.global_xp + totalHabitPoints;
+    const now = new Date().toISOString();
+
+    // 1. Update Profile
+    const { error: pError } = await supabase
+      .from('profiles')
+      .update({
+        global_xp: newGlobalXP,
+        last_consolidated: now
+      })
+      .eq('id', currentProfile.id);
+
+    if (pError) {
+      console.error("Consolidation error (profile):", pError);
+      return;
+    }
+
+    // 2. Reset Habit Points
+    const { error: hError } = await supabase
+      .from('habits')
+      .update({ points: 0 })
+      .eq('user_id', currentProfile.id);
+
+    if (hError) {
+      console.error("Consolidation error (habits):", hError);
+    } else {
+      setProfile(prev => prev ? { ...prev, global_xp: newGlobalXP, last_consolidated: now } : null);
+      setHabits(prev => prev.map(h => ({ ...h, points: 0 })));
+      toast.info("Weekly XP Consolidation complete! 🌾✨ Your points are now permanent.");
+    }
+  };
+
+  const activeHabitPoints = habits.reduce((sum, habit) => sum + habit.points, 0);
+  const totalPoints = (profile?.global_xp || 0) + activeHabitPoints;
   const currentLevel = calculateLevel(totalPoints);
 
   // Level Up Notification
@@ -92,7 +157,7 @@ export default function App() {
     prevLevelRef.current = currentLevel;
   }, [currentLevel]);
 
-  const addHabit = async (name: string, icon: string, recurrence: string) => {
+  const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly") => {
     if (!session) return;
 
     const { data, error } = await supabase
@@ -103,6 +168,8 @@ export default function App() {
           name,
           icon,
           recurrence,
+          target_count: targetCount,
+          target_period: targetPeriod,
           streak: 0,
           points: 0,
           completion_history: [],
@@ -118,6 +185,8 @@ export default function App() {
         name: data[0].name,
         icon: data[0].icon,
         recurrence: data[0].recurrence,
+        targetCount: data[0].target_count,
+        targetPeriod: data[0].target_period,
         streak: data[0].streak,
         points: data[0].points,
         lastCompleted: data[0].last_completed,
@@ -135,29 +204,59 @@ export default function App() {
     const habit = habits.find(h => h.id === id);
     if (!habit) return;
 
-    const isAlreadyCompleted = habit.lastCompleted === today;
+    // Helper to calculate current completions in period (same logic as HabitCard)
+    const getCompletionsInPeriod = (h: Habit) => {
+      const now = new Date();
+      const history = h.completionHistory || [];
+      if (h.targetPeriod === 'daily') return h.lastCompleted === today ? 1 : 0;
+      if (h.targetPeriod === 'weekly') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        return history.filter(d => new Date(d) >= startOfWeek).length;
+      }
+      if (h.targetPeriod === 'monthly') {
+        return history.filter(d => {
+          const dObj = new Date(d);
+          return dObj.getMonth() === now.getMonth() && dObj.getFullYear() === now.getFullYear();
+        }).length;
+      }
+      return 0;
+    };
+
+    const isAlreadyCompletedToday = habit.lastCompleted === today;
+
     let updates: any = {};
 
-    if (isAlreadyCompleted) {
+    if (isAlreadyCompletedToday) {
+      // UNDO logic: Remove today's completion from history
+      const newHistory = habit.completionHistory.filter(d => d !== today);
+      const wasCompletedYesterday = habit.lastCompleted === new Date(Date.now() - 86400000).toDateString();
+
       updates = {
-        last_completed: null,
-        streak: Math.max(0, habit.streak - 1),
+        last_completed: habit.completionHistory.length > 1 ? habit.completionHistory[habit.completionHistory.length - 2] : null,
+        streak: habit.targetCount === 1 ? Math.max(0, habit.streak - 1) : habit.streak,
         points: Math.max(0, habit.points - 10),
-        completion_history: habit.completionHistory.filter((date) => date !== today),
+        completion_history: newHistory,
       };
     } else {
+      // COMPLETE logic: Add today's completion
       const wasCompletedYesterday = habit.lastCompleted === new Date(Date.now() - 86400000).toDateString();
-      const newStreak = wasCompletedYesterday ? habit.streak + 1 : 1;
-
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
+      const newHistory = [...habit.completionHistory, today];
 
       updates = {
         last_completed: today,
-        streak: newStreak,
+        streak: habit.targetCount === 1 ? (wasCompletedYesterday ? habit.streak + 1 : 1) : habit.streak,
         points: habit.points + 10,
-        completion_history: [...habit.completionHistory, today],
+        completion_history: newHistory,
       };
+
+      // Confetti only if target is met today
+      const currentCount = getCompletionsInPeriod(habit);
+      if (currentCount + 1 >= habit.targetCount) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
     }
 
     const { error } = await supabase
@@ -182,6 +281,30 @@ export default function App() {
 
   const deleteHabit = async (id: string) => {
     if (!session) return;
+
+    const habit = habits.find(h => h.id === id);
+    if (!habit) return;
+
+    // 7-Day Safety Rule
+    const createdAt = new Date(habit.createdAt).getTime();
+    const now = new Date().getTime();
+    const ageInDays = (now - createdAt) / (1000 * 60 * 60 * 24);
+
+    if (ageInDays >= 7 && habit.points > 0) {
+      // Consolidate points to global_xp
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ global_xp: (profile?.global_xp || 0) + habit.points })
+        .eq('id', session.user.id);
+
+      if (profileError) {
+        console.error("Failed to consolidate XP on deletion:", profileError);
+      } else {
+        setProfile(prev => prev ? { ...prev, global_xp: prev.global_xp + habit.points } : null);
+        toast.info(`Habit consolidated! ${habit.points} XP added to your permanent pool. 🛡️`);
+      }
+    }
+
     const { error } = await supabase
       .from('habits')
       .delete()
@@ -190,7 +313,7 @@ export default function App() {
     if (error) {
       console.error("Failed to delete habit:", error);
     } else {
-      setHabits(habits.filter((habit) => habit.id !== id));
+      setHabits(habits.filter((h) => h.id !== id));
     }
   };
   const totalStreak = Math.max(...habits.map((h) => h.streak), 0);
@@ -268,6 +391,7 @@ export default function App() {
               {/* Rewards Display */}
               <RewardsDisplay
                 totalPoints={totalPoints}
+                globalXp={profile?.global_xp || 0}
                 totalStreak={totalStreak}
                 completedToday={completedToday}
                 totalHabits={habits.length}
