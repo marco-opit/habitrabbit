@@ -60,6 +60,7 @@ export default function App() {
           name: h.name,
           icon: h.icon,
           recurrence: h.recurrence,
+          type: h.type || 'positive',
           targetCount: h.target_count || 1,
           targetPeriod: h.target_period || 'daily',
           streak: h.streak,
@@ -91,11 +92,49 @@ export default function App() {
         if (daysSinceLast >= 7 && habitsToConsolidate.length > 0) {
           await consolidateXP(profileData, habitsToConsolidate);
         }
+
+        // 4. Sync Negative Habit Streaks
+        await syncNegativeStreaks(habitsToConsolidate, profileData.last_consolidated);
       }
     };
 
     fetchData();
   }, [session]);
+
+  const syncNegativeStreaks = async (currentHabits: Habit[], lastConsolidated: string) => {
+    const negativeHabits = currentHabits.filter(h => h.type === 'negative');
+    if (negativeHabits.length === 0) return;
+
+    const now = new Date();
+    const today = new Date().toDateString();
+    const lastConsolidatedDate = new Date(lastConsolidated);
+    let updated = false;
+
+    const updatedHabits = currentHabits.map(h => {
+      if (h.type === 'negative') {
+        const lastRelapse = h.lastCompleted ? new Date(h.lastCompleted) : new Date(h.createdAt);
+
+        // Streak is always since the last relapse (or creation)
+        const diffTimeStreak = Math.max(0, now.getTime() - lastRelapse.getTime());
+        const targetStreak = h.lastCompleted === today ? 0 : Math.floor(diffTimeStreak / (1000 * 60 * 60 * 24));
+
+        // Points are since the last relapse OR the last consolidation (whichever is more recent)
+        const pointsBaseline = lastRelapse > lastConsolidatedDate ? lastRelapse : lastConsolidatedDate;
+        const diffTimePoints = Math.max(0, now.getTime() - pointsBaseline.getTime());
+        const targetPoints = Math.floor(diffTimePoints / (1000 * 60 * 60 * 24)) * 10;
+
+        if (h.streak !== targetStreak || h.points !== targetPoints) {
+          updated = true;
+          return { ...h, streak: targetStreak, points: targetPoints };
+        }
+      }
+      return h;
+    });
+
+    if (updated) {
+      setHabits(updatedHabits);
+    }
+  };
 
   const consolidateXP = async (currentProfile: Profile, currentHabits: Habit[]) => {
     const totalHabitPoints = currentHabits.reduce((sum, h) => sum + h.points, 0);
@@ -157,7 +196,7 @@ export default function App() {
     prevLevelRef.current = currentLevel;
   }, [currentLevel]);
 
-  const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly") => {
+  const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: string, type: 'positive' | 'negative') => {
     if (!session) return;
 
     const { data, error } = await supabase
@@ -170,6 +209,7 @@ export default function App() {
           recurrence,
           target_count: targetCount,
           target_period: targetPeriod,
+          type,
           streak: 0,
           points: 0,
           completion_history: [],
@@ -185,6 +225,7 @@ export default function App() {
         name: data[0].name,
         icon: data[0].icon,
         recurrence: data[0].recurrence,
+        type: data[0].type || 'positive',
         targetCount: data[0].target_count,
         targetPeriod: data[0].target_period,
         streak: data[0].streak,
@@ -204,35 +245,52 @@ export default function App() {
     const habit = habits.find(h => h.id === id);
     if (!habit) return;
 
-    // Helper to calculate current completions in period (same logic as HabitCard)
-    const getCompletionsInPeriod = (h: Habit) => {
-      const now = new Date();
-      const history = h.completionHistory || [];
-      if (h.targetPeriod === 'daily') return h.lastCompleted === today ? 1 : 0;
-      if (h.targetPeriod === 'weekly') {
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-        return history.filter(d => new Date(d) >= startOfWeek).length;
-      }
-      if (h.targetPeriod === 'monthly') {
-        return history.filter(d => {
-          const dObj = new Date(d);
-          return dObj.getMonth() === now.getMonth() && dObj.getFullYear() === now.getFullYear();
-        }).length;
-      }
-      return 0;
-    };
+    // --- CASE A: NEGATIVE HABIT (Breaking) ---
+    if (habit.type === 'negative') {
+      const isAlreadyRelapsed = habit.lastCompleted === today;
+      let updates: any = {};
 
+      if (isAlreadyRelapsed) {
+        // UNDO RELAPSE: Restore points and previous streak
+        // (Wait, restoring prev streak is hard without history. Let's just set to 0 for now)
+        updates = {
+          last_completed: habit.completionHistory.length > 1 ? habit.completionHistory[habit.completionHistory.length - 2] : null,
+          points: habit.points + 20,
+          completion_history: habit.completionHistory.filter(d => d !== today)
+        };
+      } else {
+        // REPORT RELAPSE: Deduct points and reset streak
+        updates = {
+          last_completed: today,
+          streak: 0,
+          points: Math.max(0, habit.points - 20),
+          completion_history: [...(habit.completionHistory || []), today]
+        };
+        toast.error(`Relapse reported. Keep going! You'll get back on track. 👊`, {
+          style: { background: '#ef4444', color: '#fff', border: 'none' }
+        });
+      }
+
+      const { data, error } = await supabase.from('habits').update(updates).eq('id', id).select();
+      if (!error && data) {
+        setHabits(habits.map(h => h.id === id ? {
+          ...h,
+          lastCompleted: updates.last_completed,
+          streak: updates.streak ?? h.streak,
+          points: updates.points,
+          completionHistory: updates.completion_history
+        } : h));
+      }
+      return;
+    }
+
+    // --- CASE B: POSITIVE HABIT (Building) ---
     const isAlreadyCompletedToday = habit.lastCompleted === today;
-
     let updates: any = {};
 
     if (isAlreadyCompletedToday) {
-      // UNDO logic: Remove today's completion from history
+      // UNDO COMPLETION
       const newHistory = habit.completionHistory.filter(d => d !== today);
-      const wasCompletedYesterday = habit.lastCompleted === new Date(Date.now() - 86400000).toDateString();
-
       updates = {
         last_completed: habit.completionHistory.length > 1 ? habit.completionHistory[habit.completionHistory.length - 2] : null,
         streak: habit.targetCount === 1 ? Math.max(0, habit.streak - 1) : habit.streak,
@@ -240,9 +298,28 @@ export default function App() {
         completion_history: newHistory,
       };
     } else {
-      // COMPLETE logic: Add today's completion
+      // COMPLETE HABIT
       const wasCompletedYesterday = habit.lastCompleted === new Date(Date.now() - 86400000).toDateString();
-      const newHistory = [...habit.completionHistory, today];
+      const newHistory = [...(habit.completionHistory || []), today];
+
+      // Calculate if this completion meets the target
+      const now = new Date();
+      let currentPeriodCount = 0;
+      if (habit.targetPeriod === 'weekly') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        currentPeriodCount = newHistory.filter(d => new Date(d) >= startOfWeek).length;
+      } else if (habit.targetPeriod === 'monthly') {
+        currentPeriodCount = newHistory.filter(d => {
+          const dObj = new Date(d);
+          return dObj.getMonth() === now.getMonth() && dObj.getFullYear() === now.getFullYear();
+        }).length;
+      } else {
+        currentPeriodCount = 1;
+      }
+
+      const isTargetMet = currentPeriodCount >= habit.targetCount;
 
       updates = {
         last_completed: today,
@@ -251,31 +328,25 @@ export default function App() {
         completion_history: newHistory,
       };
 
-      // Confetti only if target is met today
-      const currentCount = getCompletionsInPeriod(habit);
-      if (currentCount + 1 >= habit.targetCount) {
+      if (isTargetMet) {
+        toast.success(`Target met! +10 XP earned. 🏆`, {
+          icon: '✨',
+          style: { background: 'rgba(168, 85, 247, 0.9)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(10px)', borderRadius: '1rem' }
+        });
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
       }
     }
 
-    const { error } = await supabase
-      .from('habits')
-      .update(updates)
-      .eq('id', id);
-
-    if (error) {
-      console.error("Failed to update habit:", error);
-    } else {
-      setHabits((prevHabits) =>
-        prevHabits.map((h) => (h.id === id ? {
-          ...h,
-          lastCompleted: updates.last_completed,
-          streak: updates.streak,
-          points: updates.points,
-          completionHistory: updates.completion_history
-        } : h))
-      );
+    const { data, error } = await supabase.from('habits').update(updates).eq('id', id).select();
+    if (!error && data) {
+      setHabits(habits.map(h => h.id === id ? {
+        ...h,
+        lastCompleted: updates.last_completed,
+        streak: updates.streak,
+        points: updates.points,
+        completionHistory: updates.completion_history
+      } : h));
     }
   };
 

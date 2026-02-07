@@ -3,6 +3,7 @@ export interface Habit {
   name: string;
   icon: string;
   recurrence: string;
+  type: 'positive' | 'negative';
   targetCount: number;
   targetPeriod: "daily" | "weekly" | "monthly";
   streak: number;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Trash2, Flame, Check, Plus } from "lucide-react";
+import { Trash2, Flame, Check, Plus, X } from "lucide-react";
 import { Habit } from "../types";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 
@@ -49,7 +49,19 @@ export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
   };
 
   const currentCount = getCompletionsInPeriod();
-  const isTargetMet = currentCount >= habit.targetCount;
+  const isRelapsedToday = habit.type === 'negative' && habit.lastCompleted === today;
+  const isTargetMet = habit.type === 'positive' ? currentCount >= habit.targetCount : !isRelapsedToday;
+
+  const getCardTheme = () => {
+    if (habit.type === 'negative') {
+      return isRelapsedToday
+        ? "bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-400/30"
+        : "bg-gradient-to-br from-white/10 to-white/5 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)]";
+    }
+    return isTargetMet
+      ? "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-400/30"
+      : "bg-gradient-to-br from-white/10 to-white/5 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)]";
+  };
 
   return (
     <>
@@ -59,10 +71,7 @@ export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.8, y: -20 }}
         whileHover={{ scale: 1.01 }}
-        className={`relative overflow-hidden rounded-[2rem] p-6 backdrop-blur-lg transition-all ${isTargetMet
-          ? "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-400/30"
-          : "bg-gradient-to-br from-white/10 to-white/5 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.1)]"
-          }`}
+        className={`relative overflow-hidden rounded-[2rem] p-6 backdrop-blur-lg transition-all ${getCardTheme()}`}
       >
         {/* Glow effect */}
         {isTargetMet && (
@@ -76,7 +85,9 @@ export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
 
         <div className="relative flex items-center justify-between gap-4">
           <div className="flex-1 flex items-center gap-5">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-inner transition-all ${isTargetMet ? "bg-emerald-500/20 scale-110" : "bg-white/10"
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-inner transition-all ${habit.type === 'negative'
+              ? (isRelapsedToday ? "bg-red-500/20 scale-110" : "bg-white/10")
+              : (isTargetMet ? "bg-emerald-500/20 scale-110" : "bg-white/10")
               }`}>
               {habit.icon}
             </div>
@@ -84,9 +95,9 @@ export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-xl text-white font-bold truncate">{habit.name}</h3>
-                <div className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10">
-                  <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">
-                    {habit.targetCount > 1 ? `${habit.targetCount}x ${habit.targetPeriod}` : habit.targetPeriod}
+                <div className={`px-2 py-0.5 rounded-lg bg-white/5 border ${habit.type === 'negative' ? 'border-red-500/30' : 'border-white/10'}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${habit.type === 'negative' ? 'text-red-400/80' : 'text-white/40'}`}>
+                    {habit.type === 'negative' ? 'Breaking' : (habit.targetCount > 1 ? `${habit.targetCount}x ${habit.targetPeriod}` : habit.targetPeriod)}
                   </span>
                 </div>
               </div>
@@ -129,7 +140,7 @@ export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Delete button (fixed UI) */}
+            {/* Delete button */}
             <motion.button
               whileHover={{ scale: 1.1, backgroundColor: "rgba(239, 68, 68, 0.25)" }}
               whileTap={{ scale: 0.9 }}
@@ -140,17 +151,24 @@ export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
               <Trash2 className="w-5 h-5" />
             </motion.button>
 
-            {/* Daily Toggle button */}
+            {/* Daily Toggle / Relapse button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onToggle(habit.id)}
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isCompletedToday
-                ? "bg-gradient-to-br from-emerald-400 to-teal-400 shadow-[0_10px_20px_rgba(16,185,129,0.3)]"
-                : "bg-gradient-to-br from-purple-500 to-pink-500 shadow-[0_10px_20px_rgba(168,85,247,0.3)] hover:shadow-[0_10px_25px_rgba(168,85,247,0.5)]"
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${habit.type === 'negative'
+                ? isRelapsedToday
+                  ? "bg-red-500 shadow-[0_10px_20px_rgba(239,68,68,0.3)]"
+                  : "bg-white/10 border border-white/20 hover:bg-white/20 text-white/40 hover:text-red-400"
+                : isCompletedToday
+                  ? "bg-gradient-to-br from-emerald-400 to-teal-400 shadow-[0_10px_20px_rgba(16,185,129,0.3)]"
+                  : "bg-gradient-to-br from-purple-500 to-pink-500 shadow-[0_10px_20px_rgba(168,85,247,0.3)] hover:shadow-[0_10px_25px_rgba(168,85,247,0.5)]"
                 }`}
+              title={habit.type === 'negative' ? (isRelapsedToday ? "Relapse reported" : "Report Relapse") : "Complete Habit"}
             >
-              {isCompletedToday ? (
+              {habit.type === 'negative' ? (
+                <X className={`w-7 h-7 ${isRelapsedToday ? "text-white" : "text-white/40"}`} />
+              ) : isCompletedToday ? (
                 <Check className="w-7 h-7 text-white" />
               ) : habit.targetCount > 1 ? (
                 <Plus className="w-7 h-7 text-white" />

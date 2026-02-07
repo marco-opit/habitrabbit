@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Sparkles } from "lucide-react";
 
 interface AddHabitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly") => void;
+  onAdd: (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly", type: "positive" | "negative") => void;
 }
 
 const EMOJI_OPTIONS = ["💪", "📚", "🧘", "🏃", "💧", "🎯", "✍️", "🎨", "🎵", "🧠", "🥗", "😴"];
@@ -20,17 +20,18 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
   const [name, setName] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("💪");
   const [targetPeriod, setTargetPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [habitType, setHabitType] = useState<"positive" | "negative">("positive");
   const [targetCount, setTargetCount] = useState(1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      // Ensure daily is always 1
       const count = targetPeriod === 'daily' ? 1 : targetCount;
-      onAdd(name.trim(), selectedIcon, targetPeriod, count, targetPeriod);
+      onAdd(name.trim(), selectedIcon, targetPeriod, count, targetPeriod, habitType);
       setName("");
       setSelectedIcon("💪");
       setTargetPeriod("daily");
+      setHabitType("positive");
       setTargetCount(1);
       onClose();
     }
@@ -40,7 +41,6 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -49,7 +49,6 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
           />
 
-          {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -68,7 +67,34 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Habit Name */}
+                <div>
+                  <label className="block text-sm text-white/80 mb-2">Goal Type</label>
+                  <div className="flex gap-2 p-1 bg-slate-700/50 rounded-xl border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setHabitType("positive")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${habitType === "positive"
+                          ? "bg-purple-500 text-white shadow-lg shadow-purple-500/30"
+                          : "text-white/40 hover:text-white/60"
+                        }`}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase">Building</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHabitType("negative")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${habitType === "negative"
+                          ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
+                          : "text-white/40 hover:text-white/60"
+                        }`}
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase">Breaking</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm text-white/80 mb-2">Habit Name</label>
                   <input
@@ -81,7 +107,6 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                   />
                 </div>
 
-                {/* Icon Selection */}
                 <div>
                   <label className="block text-sm text-white/80 mb-3">Choose an Icon</label>
                   <div className="grid grid-cols-6 gap-2">
@@ -93,8 +118,8 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setSelectedIcon(emoji)}
                         className={`aspect-square rounded-xl text-2xl flex items-center justify-center transition-all ${selectedIcon === emoji
-                          ? "bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg scale-110"
-                          : "bg-white/10 hover:bg-white/20"
+                            ? "bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg scale-110"
+                            : "bg-white/10 hover:bg-white/20"
                           }`}
                       >
                         {emoji}
@@ -103,34 +128,33 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                   </div>
                 </div>
 
-                {/* target Period & target Count */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-white/80 mb-2">Period</label>
-                    <select
-                      value={targetPeriod}
-                      onChange={(e) => {
-                        const newPeriod = e.target.value as any;
-                        setTargetPeriod(newPeriod);
-                        if (newPeriod === 'daily') setTargetCount(1);
-                        if (newPeriod === 'weekly' && targetCount > 6) setTargetCount(6);
-                      }}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-700/50 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-                    >
-                      {PERIOD_OPTIONS.map((opt) => (
-                        <option key={opt.id} value={opt.id} className="bg-slate-800 text-white">
-                          {opt.label}
-                        </option>
+                    <div className="flex p-1 bg-white/5 rounded-xl border border-white/10">
+                      {PERIOD_OPTIONS.map((period) => (
+                        <button
+                          key={period.id}
+                          type="button"
+                          onClick={() => setTargetPeriod(period.id as any)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${targetPeriod === period.id
+                              ? "bg-white/20 text-white shadow-sm"
+                              : "text-white/40 hover:text-white/60"
+                            }`}
+                        >
+                          {period.label}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block text-sm text-white/80 mb-2">Goal (Times)</label>
+                    <label className="block text-sm text-white/80 mb-2">Goal</label>
                     <select
                       value={targetCount}
                       disabled={targetPeriod === 'daily'}
                       onChange={(e) => setTargetCount(parseInt(e.target.value))}
-                      className="w-full px-4 py-3 rounded-xl bg-slate-700/50 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-50 appearance-none"
                     >
                       {targetPeriod === 'daily' ? (
                         <option value="1" className="bg-slate-800 text-white">1 time</option>
@@ -151,16 +175,14 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                   </div>
                 </div>
 
-                {/* Submit Button */}
                 <motion.button
-                  type="submit"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={!name.trim()}
-                  className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="submit"
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-lg shadow-xl shadow-purple-500/30 flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-5 h-5" />
-                  Add Habit
+                  <Sparkles className="w-5 h-5" />
+                  Create Habit
                 </motion.button>
               </form>
             </div>
