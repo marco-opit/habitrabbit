@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Trash2, Flame, Check, Plus, X } from "lucide-react";
+import { Trash2, Flame, Check, Plus, X, Timer } from "lucide-react";
 import { Habit } from "../types";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
+import { PomodoroOverlay } from "./PomodoroOverlay";
 
 interface HabitCardProps {
   habit: Habit;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onXPGain: (xp: number) => void;
+  isActiveTimer?: boolean;
+  onStartTimer?: () => void;
 }
 
 
 
-export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
+export function HabitCard({ habit, onToggle, onDelete, onXPGain, isActiveTimer, onStartTimer }: HabitCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const today = new Date().toDateString();
@@ -140,6 +144,22 @@ export function HabitCard({ habit, onToggle, onDelete }: HabitCardProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Timer button */}
+            {habit.type === 'positive' && habit.hasTimer && (
+              <motion.button
+                whileHover={{ scale: 1.1, backgroundColor: isActiveTimer ? "rgba(168, 85, 247, 0.4)" : "rgba(168, 85, 247, 0.25)" }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => onStartTimer?.()}
+                className={`w-11 h-11 rounded-2xl border transition-all flex items-center justify-center ${isActiveTimer
+                  ? "bg-purple-500/30 border-purple-500/50 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]"
+                  : "bg-white/5 border-white/10 text-white/30 hover:text-purple-400"
+                  }`}
+                title={isActiveTimer ? "Timer Active - Open Focus Mode" : "Focus Mode (Pomodoro)"}
+              >
+                <Timer className={`w-5 h-5 ${isActiveTimer ? "animate-pulse" : ""}`} />
+              </motion.button>
+            )}
+
             {/* Delete button */}
             <motion.button
               whileHover={{ scale: 1.1, backgroundColor: "rgba(239, 68, 68, 0.25)" }}

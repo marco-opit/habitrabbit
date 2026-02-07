@@ -10,6 +10,7 @@ export interface Habit {
   points: number;
   lastCompleted: string | null;
   completionHistory: string[];
+  hasTimer: boolean;
   createdAt: string;
 }
 
