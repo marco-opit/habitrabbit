@@ -204,27 +204,29 @@ export default function App() {
         /* Main Content */
         <div className="relative z-10 container mx-auto px-4 py-8 max-w-6xl">
           {/* Header */}
-          <div className="relative">
+          <div className="relative mb-8 pt-4 md:pt-0">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-8"
+              className="text-center"
             >
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Sparkles className="w-10 h-10 text-yellow-400" />
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
-                  Habit Tracker
-                </h1>
-                <Sparkles className="w-10 h-10 text-yellow-400" />
+              <div className="flex flex-col md:flex-row items-center justify-center gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
+                  <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
+                    Habit Tracker
+                  </h1>
+                  <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
+                </div>
               </div>
-              <p className="text-white/60 text-lg">
+              <p className="text-white/60 text-base md:text-lg px-4">
                 Build better habits, one day at a time
               </p>
             </motion.div>
 
             <button
               onClick={() => supabase.auth.signOut()}
-              className="absolute top-0 right-0 p-2 text-white/40 hover:text-white transition-colors"
+              className="absolute -top-2 right-0 md:top-0 p-2 text-white/40 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-xl"
               title="Logout"
             >
               <LogOut className="w-6 h-6" />
