@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Sparkles, LogOut } from "lucide-react";
+import { Toaster, toast } from "sonner";
 import { HabitCard } from "./components/HabitCard";
 import { AddHabitModal } from "./components/AddHabitModal";
 import { RewardsDisplay } from "./components/RewardsDisplay";
@@ -11,10 +12,13 @@ import { Auth } from "./components/Auth";
 import { supabase } from "../lib/supabase";
 import { Habit } from "./types";
 import { Session } from "@supabase/supabase-js";
+import { calculateLevel } from "../lib/leveling";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [habits, setHabits] = useState<Habit[]>([]);
+  const prevLevelRef = useRef<number | null>(null);
+
   // Listen for auth changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -64,6 +68,29 @@ export default function App() {
 
     fetchHabits();
   }, [session]);
+
+  const totalPoints = habits.reduce((sum, habit) => sum + habit.points, 0);
+  const currentLevel = calculateLevel(totalPoints);
+
+  // Level Up Notification
+  useEffect(() => {
+    if (prevLevelRef.current !== null && currentLevel > prevLevelRef.current) {
+      toast.success(`LEVEL UP! You are now Level ${currentLevel} 🐰✨`, {
+        duration: 5000,
+        position: 'top-center',
+        style: {
+          background: 'rgba(168, 85, 247, 0.9)',
+          color: '#fff',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '1rem',
+        }
+      });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+    }
+    prevLevelRef.current = currentLevel;
+  }, [currentLevel]);
 
   const addHabit = async (name: string, icon: string, recurrence: string) => {
     if (!session) return;
@@ -166,13 +193,12 @@ export default function App() {
       setHabits(habits.filter((habit) => habit.id !== id));
     }
   };
-
-  const totalPoints = habits.reduce((sum, habit) => sum + habit.points, 0);
   const totalStreak = Math.max(...habits.map((h) => h.streak), 0);
   const completedToday = habits.filter((h) => h.lastCompleted === new Date().toDateString()).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      <Toaster closeButton expand richColors />
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div

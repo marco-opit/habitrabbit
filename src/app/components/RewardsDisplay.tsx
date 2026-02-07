@@ -1,5 +1,10 @@
 import { motion } from "motion/react";
 import { Trophy, Target, Zap } from "lucide-react";
+import {
+  calculateLevel,
+  getProgressToNextLevel,
+  getPointsToNextLevel
+} from "../../lib/leveling";
 
 interface RewardsDisplayProps {
   totalPoints: number;
@@ -14,8 +19,18 @@ export function RewardsDisplay({
   completedToday,
   totalHabits,
 }: RewardsDisplayProps) {
-  const level = Math.floor(totalPoints / 100) + 1;
-  const progressToNextLevel = (totalPoints % 100) / 100;
+  const level = calculateLevel(totalPoints);
+  const progressToNextLevel = getProgressToNextLevel(totalPoints);
+  const pointsToNext = getPointsToNextLevel(totalPoints);
+
+  const getLevelTitle = (lvl: number) => {
+    if (lvl <= 5) return "Baby Bunny 👶";
+    if (lvl <= 10) return "Agile Hare 🐇";
+    if (lvl <= 20) return "Forest Runner 🌲";
+    if (lvl <= 30) return "Jackrabbit ⚡";
+    if (lvl <= 50) return "Golden Rabbit 🌟";
+    return "Habit Hero 👑";
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -30,13 +45,15 @@ export function RewardsDisplay({
           <div>
             <p className="text-white/60 text-sm mb-1">Total Points</p>
             <p className="text-3xl font-bold text-white">{totalPoints}</p>
-            <p className="text-amber-300 text-xs mt-1">Level {level}</p>
+            <p className="text-amber-300 text-xs mt-1 font-semibold tracking-wide uppercase">
+              Level {level} • {getLevelTitle(level)}
+            </p>
           </div>
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center shadow-lg shadow-amber-500/50">
             <Trophy className="w-8 h-8 text-white" />
           </div>
         </div>
-        
+
         {/* Progress bar */}
         <div className="mt-4">
           <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
@@ -47,7 +64,7 @@ export function RewardsDisplay({
             />
           </div>
           <p className="text-white/40 text-xs mt-1">
-            {100 - (totalPoints % 100)} pts to Level {level + 1}
+            {pointsToNext} pts to Level {level + 1}
           </p>
         </div>
       </motion.div>
