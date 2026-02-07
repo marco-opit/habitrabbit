@@ -13,12 +13,22 @@ import { supabase } from "../lib/supabase";
 import { Habit, Profile } from "./types";
 import { Session } from "@supabase/supabase-js";
 import { calculateLevel } from "../lib/leveling";
+import { PomodoroOverlay } from "./components/PomodoroOverlay";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [habits, setHabits] = useState<Habit[]>([]);
   const prevLevelRef = useRef<number | null>(null);
+
+  // --- Global Pomodoro State ---
+  const [activeTimerHabitId, setActiveTimerHabitId] = useState<string | null>(null);
+  const [timerTimeLeft, setTimerTimeLeft] = useState(25 * 60);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [timerMode, setTimerMode] = useState<"focus" | "break">("focus");
+  const [timerSessionCount, setTimerSessionCount] = useState(0);
+  const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
+  // ---
 
   // Listen for auth changes
   useEffect(() => {
@@ -34,6 +44,31 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // --- Pomodoro Ticking Logic ---
+  useEffect(() => {
+    let interval: any = null;
+    if (isTimerActive && timerTimeLeft > 0) {
+      interval = setInterval(() => {
+        setTimerTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timerTimeLeft === 0 && activeTimerHabitId) {
+      setIsTimerActive(false);
+      if (timerMode === "focus") {
+        setTimerSessionCount(prev => prev + 1);
+        addGlobalXP(5);
+        setTimerMode("break");
+        setTimerTimeLeft(5 * 60);
+        toast.success("Focus session complete! Time for a short break. ☕");
+      } else {
+        setTimerMode("focus");
+        setTimerTimeLeft(25 * 60);
+        toast.success("Break over! Ready for another focus session? 🎯");
+      }
+    }
+    return () => clearInterval(interval);
+  }, [isTimerActive, timerTimeLeft, timerMode, activeTimerHabitId]);
+  // ---
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -67,6 +102,7 @@ export default function App() {
           points: h.points,
           lastCompleted: h.last_completed,
           completionHistory: h.completion_history || [],
+          hasTimer: h.has_timer || false,
           createdAt: h.created_at,
         }));
         setHabits(habitsToConsolidate);
@@ -196,7 +232,7 @@ export default function App() {
     prevLevelRef.current = currentLevel;
   }, [currentLevel]);
 
-  const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: string, type: 'positive' | 'negative') => {
+  const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: string, type: 'positive' | 'negative', hasTimer: boolean) => {
     if (!session) return;
 
     const { data, error } = await supabase
@@ -210,6 +246,7 @@ export default function App() {
           target_count: targetCount,
           target_period: targetPeriod,
           type,
+          has_timer: hasTimer,
           streak: 0,
           points: 0,
           completion_history: [],
@@ -232,6 +269,7 @@ export default function App() {
         points: data[0].points,
         lastCompleted: data[0].last_completed,
         completionHistory: data[0].completion_history || [],
+        hasTimer: data[0].has_timer,
         createdAt: data[0].created_at,
       };
       setHabits([...habits, newHabit]);
@@ -350,6 +388,24 @@ export default function App() {
     }
   };
 
+  const addGlobalXP = async (amount: number) => {
+    if (!session || !profile) return;
+    const newXP = profile.global_xp + amount;
+
+    // Update locally
+    setProfile({ ...profile, global_xp: newXP });
+
+    // Update Supabase
+    await supabase
+      .from('profiles')
+      .update({ global_xp: newXP })
+      .eq('id', session.user.id);
+
+    toast.success(`Focus session complete! +${amount} XP secured. ✨`, {
+      style: { background: 'rgba(168, 85, 247, 0.9)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(10px)', borderRadius: '1rem' }
+    });
+  };
+
   const deleteHabit = async (id: string) => {
     if (!session) return;
 
@@ -389,6 +445,31 @@ export default function App() {
   };
   const totalStreak = Math.max(...habits.map((h) => h.streak), 0);
   const completedToday = habits.filter((h) => h.lastCompleted === new Date().toDateString()).length;
+
+  const handleStartTimer = (habitId: string) => {
+    if (activeTimerHabitId && activeTimerHabitId !== habitId) {
+      toast.warning("Another habit is already being focused! Finish that session first.", {
+        icon: "⏳",
+        style: { background: 'rgba(234, 179, 8, 0.9)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(10px)', borderRadius: '1rem' }
+      });
+      return;
+    }
+
+    if (activeTimerHabitId === habitId) {
+      setIsPomodoroOpen(true);
+      return;
+    }
+
+    // Start NEW timer
+    setActiveTimerHabitId(habitId);
+    setTimerTimeLeft(25 * 60);
+    setTimerMode("focus");
+    setIsTimerActive(true);
+    setIsPomodoroOpen(true);
+  };
+
+  const handleToggleTimer = () => setIsTimerActive(!isTimerActive);
+  const handleResetTimer = () => setTimerTimeLeft(timerMode === "focus" ? 25 * 60 : 5 * 60);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
@@ -500,6 +581,9 @@ export default function App() {
                         habit={habit}
                         onToggle={toggleHabit}
                         onDelete={deleteHabit}
+                        onXPGain={addGlobalXP}
+                        isActiveTimer={activeTimerHabitId === habit.id}
+                        onStartTimer={() => handleStartTimer(habit.id)}
                       />
                     ))
                   )}
@@ -517,6 +601,19 @@ export default function App() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={addHabit}
+      />
+
+      {/* Global Pomodoro Overlay */}
+      <PomodoroOverlay
+        isOpen={isPomodoroOpen}
+        habitName={habits.find(h => h.id === activeTimerHabitId)?.name || "Focus Session"}
+        timeLeft={timerTimeLeft}
+        isActive={isTimerActive}
+        mode={timerMode}
+        sessionCount={timerSessionCount}
+        onClose={() => setIsPomodoroOpen(false)}
+        onToggle={handleToggleTimer}
+        onReset={handleResetTimer}
       />
     </div>
   );

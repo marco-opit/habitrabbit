@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Plus, Sparkles } from "lucide-react";
+import { X, Plus, Sparkles, Timer } from "lucide-react";
 
 interface AddHabitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly", type: "positive" | "negative") => void;
+  onAdd: (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly", type: "positive" | "negative", hasTimer: boolean) => void;
 }
 
 const EMOJI_OPTIONS = ["💪", "📚", "🧘", "🏃", "💧", "🎯", "✍️", "🎨", "🎵", "🧠", "🥗", "😴"];
@@ -22,17 +22,19 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
   const [targetPeriod, setTargetPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
   const [habitType, setHabitType] = useState<"positive" | "negative">("positive");
   const [targetCount, setTargetCount] = useState(1);
+  const [hasTimer, setHasTimer] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
       const count = targetPeriod === 'daily' ? 1 : targetCount;
-      onAdd(name.trim(), selectedIcon, targetPeriod, count, targetPeriod, habitType);
+      onAdd(name.trim(), selectedIcon, targetPeriod, count, targetPeriod, habitType, hasTimer);
       setName("");
       setSelectedIcon("💪");
       setTargetPeriod("daily");
       setHabitType("positive");
       setTargetCount(1);
+      setHasTimer(false);
       onClose();
     }
   };
@@ -74,8 +76,8 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                       type="button"
                       onClick={() => setHabitType("positive")}
                       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${habitType === "positive"
-                          ? "bg-purple-500 text-white shadow-lg shadow-purple-500/30"
-                          : "text-white/40 hover:text-white/60"
+                        ? "bg-purple-500 text-white shadow-lg shadow-purple-500/30"
+                        : "text-white/40 hover:text-white/60"
                         }`}
                     >
                       <Plus className="w-4 h-4" />
@@ -85,8 +87,8 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                       type="button"
                       onClick={() => setHabitType("negative")}
                       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all ${habitType === "negative"
-                          ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                          : "text-white/40 hover:text-white/60"
+                        ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
+                        : "text-white/40 hover:text-white/60"
                         }`}
                     >
                       <X className="w-4 h-4" />
@@ -118,8 +120,8 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setSelectedIcon(emoji)}
                         className={`aspect-square rounded-xl text-2xl flex items-center justify-center transition-all ${selectedIcon === emoji
-                            ? "bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg scale-110"
-                            : "bg-white/10 hover:bg-white/20"
+                          ? "bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg scale-110"
+                          : "bg-white/10 hover:bg-white/20"
                           }`}
                       >
                         {emoji}
@@ -138,8 +140,8 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                           type="button"
                           onClick={() => setTargetPeriod(period.id as any)}
                           className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${targetPeriod === period.id
-                              ? "bg-white/20 text-white shadow-sm"
-                              : "text-white/40 hover:text-white/60"
+                            ? "bg-white/20 text-white shadow-sm"
+                            : "text-white/40 hover:text-white/60"
                             }`}
                         >
                           {period.label}
@@ -174,6 +176,45 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                     </select>
                   </div>
                 </div>
+
+                {/* Pomodoro Timer Toggle */}
+                <AnimatePresence>
+                  {habitType === "positive" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <label className="block text-sm text-white/80 mb-2">Advanced Tools</label>
+                      <button
+                        type="button"
+                        onClick={() => setHasTimer(!hasTimer)}
+                        className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${hasTimer
+                          ? "bg-purple-500/20 border-purple-500/50 text-white shadow-[0_0_20px_rgba(168,85,247,0.1)]"
+                          : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:border-white/20"
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${hasTimer ? "bg-purple-500 text-white" : "bg-white/10"
+                            }`}>
+                            <Timer className="w-5 h-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-bold">Enable Focus Timer</p>
+                            <p className="text-[10px] opacity-60">Pomodoro mode (+5 XP reward)</p>
+                          </div>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full relative transition-colors ${hasTimer ? "bg-purple-500" : "bg-white/10"}`}>
+                          <motion.div
+                            animate={{ x: hasTimer ? 24 : 4 }}
+                            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
+                          />
+                        </div>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <motion.button
                   whileHover={{ scale: 1.02 }}
