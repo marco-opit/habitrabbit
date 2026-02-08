@@ -109,15 +109,28 @@ export default function App() {
       }
 
       // 2. Fetch Profile
-      const { data: profileData, error: profileError } = await supabase
+      let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
 
-      if (profileError) {
-        console.error("Failed to fetch profile:", profileError);
-      } else if (profileData) {
+      if (profileError || !profileData) {
+        console.log("Profile not found, creating a new one...");
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert([{ id: session.user.id, global_xp: 0, last_consolidated: new Date().toISOString() }])
+          .select()
+          .single();
+
+        if (createError) {
+          console.error("Failed to create fallback profile:", createError);
+        } else {
+          profileData = newProfile;
+        }
+      }
+
+      if (profileData) {
         setProfile(profileData);
 
         // 3. Weekly Consolidation Check
