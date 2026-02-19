@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Sparkles, LogOut } from "lucide-react";
 import { Toaster, toast } from "sonner";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { HabitCard } from "./components/HabitCard";
 import { AddHabitModal } from "./components/AddHabitModal";
 import { RewardsDisplay } from "./components/RewardsDisplay";
@@ -597,6 +598,9 @@ export default function App() {
         onToggle={handleToggleTimer}
         onReset={handleResetTimer}
       />
+
+      {/* Vercel Speed Insights */}
+      <SpeedInsights />
     </div>
   );
 }
