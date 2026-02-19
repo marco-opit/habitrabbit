@@ -133,13 +133,17 @@ export default function App() {
       if (profileData) {
         setProfile(profileData);
 
-        // 3. Weekly Consolidation Check
+        // 3. Server-Side Sync Awareness
+        // Check if consolidation happened in the last hour
         const lastConsolidated = new Date(profileData.last_consolidated).getTime();
         const now = new Date().getTime();
-        const daysSinceLast = (now - lastConsolidated) / (1000 * 60 * 60 * 24);
+        const diffMinutes = (now - lastConsolidated) / (1000 * 60);
 
-        if (daysSinceLast >= 7 && habitsToConsolidate.length > 0) {
-          await consolidateXP(profileData, habitsToConsolidate);
+        if (diffMinutes < 60) {
+          toast.info("Your points have been harvested! 🌾✨ Sunday sync complete.", {
+            icon: "🏆",
+            style: { background: 'rgba(52, 211, 153, 0.9)', color: '#fff', borderRadius: '1rem' }
+          });
         }
 
         // 4. Sync Negative Habit Streaks
@@ -185,41 +189,6 @@ export default function App() {
     }
   };
 
-  const consolidateXP = async (currentProfile: Profile, currentHabits: Habit[]) => {
-    const totalHabitPoints = currentHabits.reduce((sum, h) => sum + h.points, 0);
-    if (totalHabitPoints === 0) return;
-
-    const newGlobalXP = currentProfile.global_xp + totalHabitPoints;
-    const now = new Date().toISOString();
-
-    // 1. Update Profile
-    const { error: pError } = await supabase
-      .from('profiles')
-      .update({
-        global_xp: newGlobalXP,
-        last_consolidated: now
-      })
-      .eq('id', currentProfile.id);
-
-    if (pError) {
-      console.error("Consolidation error (profile):", pError);
-      return;
-    }
-
-    // 2. Reset Habit Points
-    const { error: hError } = await supabase
-      .from('habits')
-      .update({ points: 0 })
-      .eq('user_id', currentProfile.id);
-
-    if (hError) {
-      console.error("Consolidation error (habits):", hError);
-    } else {
-      setProfile(prev => prev ? { ...prev, global_xp: newGlobalXP, last_consolidated: now } : null);
-      setHabits(prev => prev.map(h => ({ ...h, points: 0 })));
-      toast.info("Weekly XP Consolidation complete! 🌾✨ Your points are now permanent.");
-    }
-  };
 
   const activeHabitPoints = habits.reduce((sum, habit) => sum + habit.points, 0);
   const totalPoints = (profile?.global_xp || 0) + activeHabitPoints;
