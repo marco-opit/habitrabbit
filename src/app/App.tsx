@@ -431,8 +431,12 @@ export default function App() {
       setHabits(habits.filter((h) => h.id !== id));
     }
   };
+  const today = new Date().toDateString();
   const totalStreak = Math.max(...habits.map((h) => h.streak), 0);
-  const completedToday = habits.filter((h) => h.lastCompleted === new Date().toDateString()).length;
+  const completedToday = habits.filter((h) => {
+    if (h.type === 'negative') return h.lastCompleted !== today;
+    return h.lastCompleted === today;
+  }).length;
 
   const handleStartTimer = (habitId: string) => {
     if (activeTimerHabitId && activeTimerHabitId !== habitId) {
