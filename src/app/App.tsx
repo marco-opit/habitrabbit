@@ -163,26 +163,32 @@ export default function App() {
     const lastConsolidatedDate = new Date(lastConsolidated);
     let updated = false;
 
-    const updatedHabits = currentHabits.map(h => {
+    const updatedHabits = await Promise.all(currentHabits.map(async (h) => {
       if (h.type === 'negative') {
         const lastRelapse = h.lastCompleted ? new Date(h.lastCompleted) : new Date(h.createdAt);
 
-        // Streak is always since the last relapse (or creation)
+        // Streak: Days since last relapse
         const diffTimeStreak = Math.max(0, now.getTime() - lastRelapse.getTime());
         const targetStreak = h.lastCompleted === today ? 0 : Math.floor(diffTimeStreak / (1000 * 60 * 60 * 24));
 
-        // Points are since the last relapse OR the last consolidation (whichever is more recent)
+        // Points: Since last relapse OR last consolidation
         const pointsBaseline = lastRelapse > lastConsolidatedDate ? lastRelapse : lastConsolidatedDate;
         const diffTimePoints = Math.max(0, now.getTime() - pointsBaseline.getTime());
         const targetPoints = Math.floor(diffTimePoints / (1000 * 60 * 60 * 24)) * 10;
 
         if (h.streak !== targetStreak || h.points !== targetPoints) {
           updated = true;
+          // Persist to DB so Sunday sync sees it
+          await supabase
+            .from('habits')
+            .update({ streak: targetStreak, points: targetPoints })
+            .eq('id', h.id);
+            
           return { ...h, streak: targetStreak, points: targetPoints };
         }
       }
       return h;
-    });
+    }));
 
     if (updated) {
       setHabits(updatedHabits);
