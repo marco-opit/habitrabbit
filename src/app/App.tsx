@@ -176,15 +176,19 @@ export default function App() {
         const diffTimePoints = Math.max(0, now.getTime() - pointsBaseline.getTime());
         const targetPoints = Math.floor(diffTimePoints / (1000 * 60 * 60 * 24)) * 10;
 
-        if (h.streak !== targetStreak || h.points !== targetPoints) {
+        if (h.streak !== targetStreak || h.points !== targetPoints || h.lastCompleted !== today) {
           updated = true;
-          // Persist to DB so Sunday sync sees it
+          // Persist to DB so Sunday sync sees it and it looks 'done' today
           await supabase
             .from('habits')
-            .update({ streak: targetStreak, points: targetPoints })
+            .update({ 
+               streak: targetStreak, 
+               points: targetPoints,
+               last_completed: today // Show success up to today
+            })
             .eq('id', h.id);
             
-          return { ...h, streak: targetStreak, points: targetPoints };
+          return { ...h, streak: targetStreak, points: targetPoints, lastCompleted: today };
         }
       }
       return h;
@@ -273,7 +277,7 @@ export default function App() {
 
     // --- CASE A: NEGATIVE HABIT (Breaking) ---
     if (habit.type === 'negative') {
-      const isAlreadyRelapsed = habit.lastCompleted === today;
+      const isAlreadyRelapsed = (habit.completionHistory || []).includes(today);
       let updates: any = {};
 
       if (isAlreadyRelapsed) {

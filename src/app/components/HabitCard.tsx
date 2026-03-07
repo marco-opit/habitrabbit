@@ -53,7 +53,7 @@ export function HabitCard({ habit, onToggle, onDelete, onXPGain, isActiveTimer, 
   };
 
   const currentCount = getCompletionsInPeriod();
-  const isRelapsedToday = habit.type === 'negative' && habit.lastCompleted === today;
+  const isRelapsedToday = habit.type === 'negative' && (habit.completionHistory || []).includes(today);
   const isTargetMet = habit.type === 'positive' ? currentCount >= habit.targetCount : !isRelapsedToday;
 
   const getCardTheme = () => {
