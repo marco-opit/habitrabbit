@@ -12,31 +12,42 @@ export function MonthlyStats({ habits, selectedMonth }: MonthlyStatsProps) {
   const monthStart = startOfMonth(selectedMonth);
   const monthEnd = endOfMonth(selectedMonth);
   
+  const daysInMonth = monthEnd.getDate();
+
   // Calculate stats for selected month
   const completionsThisMonth = habits.reduce((total, habit) => {
-    const monthCompletions = habit.completionHistory.filter((dateStr) => {
+    const relapseCount = habit.completionHistory.filter((dateStr) => {
       const date = new Date(dateStr);
       return date >= monthStart && date <= monthEnd;
-    });
-    return total + monthCompletions.length;
+    }).length;
+
+    const completions = habit.type === 'negative'
+      ? Math.max(0, daysInMonth - relapseCount)
+      : relapseCount;
+
+    return total + completions;
   }, 0);
 
-  const daysInMonth = monthEnd.getDate();
   const possibleCompletions = habits.length * daysInMonth;
-  const completionRate = possibleCompletions > 0 
-    ? Math.round((completionsThisMonth / possibleCompletions) * 100) 
+  const completionRate = possibleCompletions > 0
+    ? Math.round((completionsThisMonth / possibleCompletions) * 100)
     : 0;
 
   // Find most consistent habit this month
   const habitStats = habits.map((habit) => {
-    const monthCompletions = habit.completionHistory.filter((dateStr) => {
+    const relapseCount = habit.completionHistory.filter((dateStr) => {
       const date = new Date(dateStr);
       return date >= monthStart && date <= monthEnd;
-    });
+    }).length;
+
+    const completions = habit.type === 'negative'
+      ? Math.max(0, daysInMonth - relapseCount)
+      : relapseCount;
+
     return {
       habit,
-      completions: monthCompletions.length,
-      rate: (monthCompletions.length / daysInMonth) * 100,
+      completions: completions,
+      rate: (completions / daysInMonth) * 100,
     };
   });
 

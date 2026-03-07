@@ -164,26 +164,36 @@ export default function App() {
     const lastConsolidatedDate = new Date(lastConsolidated);
     let updated = false;
 
-    const updatedHabits = currentHabits.map(h => {
+    const updatedHabits = await Promise.all(currentHabits.map(async (h) => {
       if (h.type === 'negative') {
         const lastRelapse = h.lastCompleted ? new Date(h.lastCompleted) : new Date(h.createdAt);
 
-        // Streak is always since the last relapse (or creation)
+        // Streak: Days since last relapse
         const diffTimeStreak = Math.max(0, now.getTime() - lastRelapse.getTime());
         const targetStreak = h.lastCompleted === today ? 0 : Math.floor(diffTimeStreak / (1000 * 60 * 60 * 24));
 
-        // Points are since the last relapse OR the last consolidation (whichever is more recent)
+        // Points: Since last relapse OR last consolidation
         const pointsBaseline = lastRelapse > lastConsolidatedDate ? lastRelapse : lastConsolidatedDate;
         const diffTimePoints = Math.max(0, now.getTime() - pointsBaseline.getTime());
         const targetPoints = Math.floor(diffTimePoints / (1000 * 60 * 60 * 24)) * 10;
 
-        if (h.streak !== targetStreak || h.points !== targetPoints) {
+        if (h.streak !== targetStreak || h.points !== targetPoints || h.lastCompleted !== today) {
           updated = true;
-          return { ...h, streak: targetStreak, points: targetPoints };
+          // Persist to DB so Sunday sync sees it and it looks 'done' today
+          await supabase
+            .from('habits')
+            .update({ 
+               streak: targetStreak, 
+               points: targetPoints,
+               last_completed: today // Show success up to today
+            })
+            .eq('id', h.id);
+            
+          return { ...h, streak: targetStreak, points: targetPoints, lastCompleted: today };
         }
       }
       return h;
-    });
+    }));
 
     if (updated) {
       setHabits(updatedHabits);
@@ -268,7 +278,7 @@ export default function App() {
 
     // --- CASE A: NEGATIVE HABIT (Breaking) ---
     if (habit.type === 'negative') {
-      const isAlreadyRelapsed = habit.lastCompleted === today;
+      const isAlreadyRelapsed = (habit.completionHistory || []).includes(today);
       let updates: any = {};
 
       if (isAlreadyRelapsed) {
@@ -426,8 +436,12 @@ export default function App() {
       setHabits(habits.filter((h) => h.id !== id));
     }
   };
+  const today = new Date().toDateString();
   const totalStreak = Math.max(...habits.map((h) => h.streak), 0);
-  const completedToday = habits.filter((h) => h.lastCompleted === new Date().toDateString()).length;
+  const completedToday = habits.filter((h) => {
+    if (h.type === 'negative') return h.lastCompleted !== today;
+    return h.lastCompleted === today;
+  }).length;
 
   const handleStartTimer = (habitId: string) => {
     if (activeTimerHabitId && activeTimerHabitId !== habitId) {

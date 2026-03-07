@@ -13,10 +13,15 @@ export function HabitProgressList({ habits, selectedMonth }: HabitProgressListPr
   const daysInMonth = monthEnd.getDate();
 
   const habitProgress = habits.map((habit) => {
-    const monthCompletions = habit.completionHistory.filter((dateStr) => {
+    let monthCompletions = habit.completionHistory.filter((dateStr: string) => {
       const date = new Date(dateStr);
       return date >= monthStart && date <= monthEnd;
     }).length;
+
+    // For negative habits, completions = total days - relapses
+    if (habit.type === 'negative') {
+      monthCompletions = Math.max(0, daysInMonth - monthCompletions);
+    }
 
     const completionRate = (monthCompletions / daysInMonth) * 100;
 

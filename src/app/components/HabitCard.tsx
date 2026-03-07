@@ -53,7 +53,7 @@ export function HabitCard({ habit, onToggle, onDelete, onXPGain, isActiveTimer, 
   };
 
   const currentCount = getCompletionsInPeriod();
-  const isRelapsedToday = habit.type === 'negative' && habit.lastCompleted === today;
+  const isRelapsedToday = habit.type === 'negative' && (habit.completionHistory || []).includes(today);
   const isTargetMet = habit.type === 'positive' ? currentCount >= habit.targetCount : !isRelapsedToday;
 
   const getCardTheme = () => {
@@ -179,15 +179,22 @@ export function HabitCard({ habit, onToggle, onDelete, onXPGain, isActiveTimer, 
               className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${habit.type === 'negative'
                 ? isRelapsedToday
                   ? "bg-red-500 shadow-[0_10px_20px_rgba(239,68,68,0.3)]"
-                  : "bg-white/10 border border-white/20 hover:bg-white/20 text-white/40 hover:text-red-400"
+                  : "bg-gradient-to-br from-emerald-400/80 to-teal-400/80 border border-emerald-400/30 shadow-[0_10px_20px_rgba(16,185,129,0.1)] hover:from-red-500/20 hover:to-orange-500/20 hover:border-red-500/50 group"
                 : isCompletedToday
                   ? "bg-gradient-to-br from-emerald-400 to-teal-400 shadow-[0_10px_20px_rgba(16,185,129,0.3)]"
                   : "bg-gradient-to-br from-purple-500 to-pink-500 shadow-[0_10px_20px_rgba(168,85,247,0.3)] hover:shadow-[0_10px_25px_rgba(168,85,247,0.5)]"
                 }`}
-              title={habit.type === 'negative' ? (isRelapsedToday ? "Relapse reported" : "Report Relapse") : "Complete Habit"}
+              title={habit.type === 'negative' ? (isRelapsedToday ? "Relapse reported (Click to undo)" : "Report Relapse") : "Complete Habit"}
             >
               {habit.type === 'negative' ? (
-                <X className={`w-7 h-7 ${isRelapsedToday ? "text-white" : "text-white/40"}`} />
+                isRelapsedToday ? (
+                  <X className="w-7 h-7 text-white" />
+                ) : (
+                  <>
+                    <Check className="w-7 h-7 text-white group-hover:hidden" />
+                    <X className="w-7 h-7 text-red-400 hidden group-hover:block" />
+                  </>
+                )
               ) : isCompletedToday ? (
                 <Check className="w-7 h-7 text-white" />
               ) : habit.targetCount > 1 ? (
