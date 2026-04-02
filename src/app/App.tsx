@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Sparkles, LogOut } from "lucide-react";
+import { Plus, Search, Sparkles, LogOut } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { HabitCard } from "./components/HabitCard";
@@ -10,7 +10,8 @@ import { ConfettiEffect } from "./components/ConfettiEffect";
 import { Navigation } from "./components/Navigation";
 import { Dashboard } from "./components/Dashboard";
 import { Auth } from "./components/Auth";
-import { supabase } from "../lib/supabase";
+import { Input } from "./components/ui/input";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { Habit, Profile } from "./types";
 import { Session } from "@supabase/supabase-js";
 import { calculateLevel } from "../lib/leveling";
@@ -33,6 +34,10 @@ export default function App() {
 
   // Listen for auth changes
   useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
@@ -74,10 +79,11 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [currentPage, setCurrentPage] = useState<"habits" | "dashboard">("habits");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Load habits and profile from Supabase
   useEffect(() => {
-    if (!session) return;
+    if (!isSupabaseConfigured || !supabase || !session) return;
 
     const fetchData = async () => {
       let habitsToConsolidate: Habit[] = [];
@@ -204,6 +210,10 @@ export default function App() {
   const activeHabitPoints = habits.reduce((sum, habit) => sum + habit.points, 0);
   const totalPoints = (profile?.global_xp || 0) + activeHabitPoints;
   const currentLevel = calculateLevel(totalPoints);
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const filteredHabits = habits.filter((habit) =>
+    habit.name.toLowerCase().includes(normalizedSearchTerm)
+  );
 
   // Level Up Notification
   useEffect(() => {
@@ -226,7 +236,7 @@ export default function App() {
   }, [currentLevel]);
 
   const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: string, type: 'positive' | 'negative', hasTimer: boolean) => {
-    if (!session) return;
+    if (!session || !supabase) return;
 
     const { data, error } = await supabase
       .from('habits')
@@ -270,7 +280,7 @@ export default function App() {
   };
 
   const toggleHabit = async (id: string) => {
-    if (!session) return;
+    if (!session || !supabase) return;
     const today = new Date().toDateString();
 
     const habit = habits.find(h => h.id === id);
@@ -382,7 +392,7 @@ export default function App() {
   };
 
   const addGlobalXP = async (amount: number) => {
-    if (!session || !profile) return;
+    if (!session || !profile || !supabase) return;
     const newXP = profile.global_xp + amount;
 
     // Update locally
@@ -400,7 +410,7 @@ export default function App() {
   };
 
   const deleteHabit = async (id: string) => {
-    if (!session) return;
+    if (!session || !supabase) return;
 
     const habit = habits.find(h => h.id === id);
     if (!habit) return;
@@ -496,7 +506,22 @@ export default function App() {
       {/* Confetti */}
       {showConfetti && <ConfettiEffect />}
 
-      {!session ? (
+      {!isSupabaseConfigured ? (
+        <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+          <div className="w-full max-w-2xl rounded-[2rem] border border-white/20 bg-white/10 p-8 text-white shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-2xl">
+            <h1 className="mb-4 text-3xl font-bold">Supabase setup needed</h1>
+            <p className="mb-4 text-white/80">
+              This project needs a local <code>.env</code> file before the app can load data and render the login screen.
+            </p>
+            <p className="mb-3 text-white/70">Create <code>.env</code> in the project root with:</p>
+            <pre className="overflow-x-auto rounded-2xl bg-black/30 p-4 text-sm text-white/90"><code>{`VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`}</code></pre>
+            <p className="mt-4 text-white/60">
+              After saving the file, restart the dev server with <code>q</code> then <code>npm run dev</code>.
+            </p>
+          </div>
+        </div>
+      ) : !session ? (
         <Auth />
       ) : (
         /* Main Content */
@@ -557,6 +582,18 @@ export default function App() {
                 Add New Habit
               </motion.button>
 
+              {/* Search */}
+              <div className="relative mb-6">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/40" />
+                <Input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search habits by name"
+                  className="h-12 rounded-2xl border-white/10 bg-white/5 pl-12 text-white placeholder:text-white/40"
+                />
+              </div>
+
               {/* Habits List */}
               <div className="space-y-4">
                 <AnimatePresence>
@@ -571,8 +608,22 @@ export default function App() {
                         No habits yet. Start building your routine!
                       </p>
                     </motion.div>
+                  ) : filteredHabits.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center py-20"
+                    >
+                      <div className="text-6xl mb-4">🔎</div>
+                      <p className="text-white/80 text-lg">
+                        No habits match "{searchTerm.trim()}".
+                      </p>
+                      <p className="text-white/50 mt-2">
+                        Try a different name or clear the search.
+                      </p>
+                    </motion.div>
                   ) : (
-                    habits.map((habit) => (
+                    filteredHabits.map((habit) => (
                       <HabitCard
                         key={habit.id}
                         habit={habit}
