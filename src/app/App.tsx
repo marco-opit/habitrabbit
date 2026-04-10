@@ -9,7 +9,6 @@ import { ConfettiEffect } from "./components/ConfettiEffect";
 import { Navigation } from "./components/Navigation";
 import { Dashboard } from "./components/Dashboard";
 import { Auth } from "./components/Auth";
-import { ResetPassword } from "./components/ResetPassword";
 import { Input } from "./components/ui/input";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { Habit, Profile } from "./types";
@@ -21,7 +20,6 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const prevLevelRef = useRef<number | null>(null);
 
   // --- Global Pomodoro State ---
@@ -39,21 +37,13 @@ export default function App() {
       return;
     }
 
-    // Initial check for recovery in URL hash to prevent missed events
-    if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
-      setIsRecoveryMode(true);
-    }
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsRecoveryMode(true);
-      }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
@@ -530,8 +520,6 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`}</code></pre>
             </p>
           </div>
         </div>
-      ) : isRecoveryMode ? (
-        <ResetPassword onPasswordUpdated={() => setIsRecoveryMode(false)} />
       ) : !session ? (
         <Auth />
       ) : (
