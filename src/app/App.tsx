@@ -29,6 +29,7 @@ export default function App() {
   const [timerMode, setTimerMode] = useState<"focus" | "break">("focus");
   const [timerSessionCount, setTimerSessionCount] = useState(0);
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
   // ---
 
   // Listen for auth changes
@@ -109,6 +110,7 @@ export default function App() {
           lastCompleted: h.last_completed,
           completionHistory: h.completion_history || [],
           hasTimer: h.has_timer || false,
+          category: h.category || 'Uncategorized',
           createdAt: h.created_at,
         }));
         setHabits(habitsToConsolidate);
@@ -205,14 +207,20 @@ export default function App() {
     }
   };
 
-
   const activeHabitPoints = habits.reduce((sum, habit) => sum + habit.points, 0);
   const totalPoints = (profile?.global_xp || 0) + activeHabitPoints;
   const currentLevel = calculateLevel(totalPoints);
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-  const filteredHabits = habits.filter((habit) =>
+  
+  // First filter by search term
+  const searchFilteredHabits = habits.filter((habit) =>
     habit.name.toLowerCase().includes(normalizedSearchTerm)
   );
+  
+  // Then filter by category
+  const filteredHabits = selectedCategory === 'All' 
+    ? searchFilteredHabits 
+    : searchFilteredHabits.filter(habit => habit.category === selectedCategory);
 
   // Level Up Notification
   useEffect(() => {
@@ -234,7 +242,7 @@ export default function App() {
     prevLevelRef.current = currentLevel;
   }, [currentLevel]);
 
-  const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: string, type: 'positive' | 'negative', hasTimer: boolean) => {
+  const addHabit = async (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: string, type: 'positive' | 'negative', hasTimer: boolean, category: string) => {
     if (!session || !supabase) return;
 
     const { data, error } = await supabase
@@ -249,6 +257,7 @@ export default function App() {
           target_period: targetPeriod,
           type,
           has_timer: hasTimer,
+          category: category,
           streak: 0,
           points: 0,
           completion_history: [],
@@ -272,6 +281,7 @@ export default function App() {
         lastCompleted: data[0].last_completed,
         completionHistory: data[0].completion_history || [],
         hasTimer: data[0].has_timer,
+        category: data[0].category || 'Uncategorized',
         createdAt: data[0].created_at,
       };
       setHabits([...habits, newHabit]);
@@ -445,6 +455,7 @@ export default function App() {
       setHabits(habits.filter((h) => h.id !== id));
     }
   };
+  
   const today = new Date().toDateString();
   const totalStreak = Math.max(...habits.map((h) => h.streak), 0);
   const completedToday = habits.filter((h) => {
@@ -593,6 +604,73 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`}</code></pre>
                 />
               </div>
 
+              {/* Category Filters */}
+              <div className="mb-6">
+                <label className="block text-sm text-white/60 mb-2">Filter by Category</label>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setSelectedCategory('All')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === 'All'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setSelectedCategory('Health')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === 'Health'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    Health
+                  </button>
+                  <button
+                    onClick={() => setSelectedCategory('Work')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === 'Work'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    Work
+                  </button>
+                  <button
+                    onClick={() => setSelectedCategory('Personal')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === 'Personal'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    Personal
+                  </button>
+                  <button
+                    onClick={() => setSelectedCategory('Fitness')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === 'Fitness'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    Fitness
+                  </button>
+                  <button
+                    onClick={() => setSelectedCategory('Learning')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedCategory === 'Learning'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : 'bg-white/10 text-white/70 hover:bg-white/20'
+                    }`}
+                  >
+                    Learning
+                  </button>
+                </div>
+              </div>
+
               {/* Habits List */}
               <div className="space-y-4">
                 <AnimatePresence>
@@ -615,10 +693,10 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`}</code></pre>
                     >
                       <div className="text-6xl mb-4">🔎</div>
                       <p className="text-white/80 text-lg">
-                        No habits match "{searchTerm.trim()}".
+                        {searchTerm ? `No habits match "${searchTerm.trim()}"` : `No habits in ${selectedCategory} category`}
                       </p>
                       <p className="text-white/50 mt-2">
-                        Try a different name or clear the search.
+                        {searchTerm ? "Try a different name or clear the search." : "Try a different category or add new habits."}
                       </p>
                     </motion.div>
                   ) : (

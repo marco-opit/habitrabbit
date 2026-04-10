@@ -5,7 +5,7 @@ import { X, Plus, Sparkles, Timer } from "lucide-react";
 interface AddHabitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly", type: "positive" | "negative", hasTimer: boolean) => void;
+  onAdd: (name: string, icon: string, recurrence: string, targetCount: number, targetPeriod: "daily" | "weekly" | "monthly", type: "positive" | "negative", hasTimer: boolean, category: string) => void;
 }
 
 const EMOJI_OPTIONS = ["💪", "📚", "🧘", "🏃", "💧", "🎯", "✍️", "🎨", "🎵", "🧠", "🥗", "😴"];
@@ -23,18 +23,20 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
   const [habitType, setHabitType] = useState<"positive" | "negative">("positive");
   const [targetCount, setTargetCount] = useState(1);
   const [hasTimer, setHasTimer] = useState(false);
+  const [category, setCategory] = useState("Uncategorized");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
       const count = targetPeriod === 'daily' ? 1 : targetCount;
-      onAdd(name.trim(), selectedIcon, targetPeriod, count, targetPeriod, habitType, hasTimer);
+      onAdd(name.trim(), selectedIcon, targetPeriod, count, targetPeriod, habitType, hasTimer, category);
       setName("");
       setSelectedIcon("💪");
       setTargetPeriod("daily");
       setHabitType("positive");
       setTargetCount(1);
       setHasTimer(false);
+      setCategory("Uncategorized");
       onClose();
     }
   };
@@ -175,6 +177,23 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                       )}
                     </select>
                   </div>
+                </div>
+
+                {/* Category Selection */}
+                <div>
+                  <label className="block text-sm text-white/80 mb-2">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                  >
+                    <option value="Uncategorized">Uncategorized</option>
+                    <option value="Health">Health</option>
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Fitness">Fitness</option>
+                    <option value="Learning">Learning</option>
+                  </select>
                 </div>
 
                 {/* Pomodoro Timer Toggle */}
