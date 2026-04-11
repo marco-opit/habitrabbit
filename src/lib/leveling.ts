@@ -23,6 +23,15 @@ export const calculateLevel = (totalPoints: number): number => {
     return Math.floor(level);
 };
 
+export const getLevelTitle = (level: number): string => {
+    if (level <= 5) return "Baby Bunny 🐰";
+    if (level <= 10) return "Agile Hare 🐇";
+    if (level <= 20) return "Forest Runner 🌲";
+    if (level <= 30) return "Jackrabbit ⚡";
+    if (level <= 50) return "Golden Rabbit 🌟";
+    return "Habit Hero 👑";
+};
+
 export const getXpForLevel = (level: number): number => {
     if (level <= 1) return 0;
     // XP = 1000 * (1.1^(L-1) - 1)
