@@ -570,7 +570,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+    <div
+      className="min-h-screen relative overflow-hidden transition-colors duration-500"
+      style={isDarkMode
+        ? { background: 'linear-gradient(to bottom right, #0f172a, #3b0764, #0f172a)' }
+        : { background: 'linear-gradient(to bottom right, #f5f3ff, #ede9fe, #fdf4ff)' }
+      }
+    >
       <Toaster closeButton expand richColors />
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -635,7 +641,10 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`}</code></pre>
                   <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
                 </div>
               </div>
-              <p className="text-white/60 text-base md:text-lg px-4">
+              <p
+                className="text-base md:text-lg px-4"
+                style={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(88,28,135,0.7)' }}
+              >
                 Build better habits, one day at a time
               </p>
             </motion.div>

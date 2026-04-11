@@ -179,3 +179,97 @@
     line-height: 1.5;
   }
 }
+
+/* ============================================================
+ * Light mode overrides
+ * When .dark is NOT on <html>, convert white-opacity text 
+ * to dark purple so all components remain readable.
+ * ============================================================ */
+html:not(.dark) .text-white {
+  color: rgb(59, 7, 100) !important;
+}
+html:not(.dark) .text-white\/90,
+html:not(.dark) .text-white\/85,
+html:not(.dark) .text-white\/80 {
+  color: rgba(59, 7, 100, 0.9) !important;
+}
+html:not(.dark) .text-white\/75 {
+  color: rgba(59, 7, 100, 0.82) !important;
+}
+html:not(.dark) .text-white\/70 {
+  color: rgba(59, 7, 100, 0.8) !important;
+}
+html:not(.dark) .text-white\/60 {
+  color: rgba(59, 7, 100, 0.7) !important;
+}
+html:not(.dark) .text-white\/50 {
+  color: rgba(59, 7, 100, 0.65) !important;
+}
+html:not(.dark) .text-white\/40 {
+  color: rgba(59, 7, 100, 0.6) !important;
+}
+html:not(.dark) .text-white\/30 {
+  color: rgba(59, 7, 100, 0.55) !important;
+}
+html:not(.dark) .text-white\/20 {
+  color: rgba(59, 7, 100, 0.5) !important;
+}
+html:not(.dark) .text-white\/10 {
+  color: rgba(59, 7, 100, 0.4) !important;
+}
+
+/* Input placeholder text */
+html:not(.dark) input::placeholder {
+  color: rgba(88, 28, 135, 0.45) !important;
+}
+
+/* Glassmorphism backgrounds — give subtle purple tint */
+html:not(.dark) .bg-white\/5  { background-color: rgba(88, 28, 135, 0.07) !important; }
+html:not(.dark) .bg-white\/10 { background-color: rgba(88, 28, 135, 0.10) !important; }
+html:not(.dark) .bg-white\/20 { background-color: rgba(88, 28, 135, 0.14) !important; }
+
+/* Borders */
+html:not(.dark) .border-white\/10 { border-color: rgba(88, 28, 135, 0.15) !important; }
+html:not(.dark) .border-white\/20 { border-color: rgba(88, 28, 135, 0.25) !important; }
+
+/* -------- Reward card pastel labels (amber/orange/purple-300 are invisible on light cards) -------- */
+html:not(.dark) .text-amber-300  { color: #b45309 !important; } /* darker amber */
+html:not(.dark) .text-orange-300 { color: #c2410c !important; } /* darker orange */
+html:not(.dark) .text-purple-300 { color: #7e22ce !important; } /* darker purple */
+html:not(.dark) .text-pink-300   { color: #be185d !important; } /* darker pink */
+html:not(.dark) .text-cyan-300   { color: #0e7490 !important; } /* darker cyan */
+html:not(.dark) .text-blue-300   { color: #1d4ed8 !important; } /* darker blue */
+html:not(.dark) .text-emerald-300 { color: #047857 !important; } /* darker emerald */
+
+/* -------- Settings Menu specific colors -------- */
+html:not(.dark) .text-red-100 { color: #991b1b !important; } /* Settings clear data title */
+html:not(.dark) .text-red-200\/70 { color: rgba(153, 27, 27, 0.8) !important; } /* Settings clear data subtitle */
+
+/* -------- SettingsMenu dropdown: override dark slate background -------- */
+html:not(.dark) .bg-slate-950\/95 {
+  background-color: rgba(255, 255, 255, 0.97) !important;
+}
+/* Inner nested cards inside the settings panel */
+html:not(.dark) .bg-black\/20 {
+  background-color: rgba(88, 28, 135, 0.06) !important;
+}
+/* Gradient card inside settings (Profile section) */
+html:not(.dark) .from-white\/10 {
+  --tw-gradient-from: rgba(88, 28, 135, 0.08) var(--tw-gradient-from-position) !important;
+}
+html:not(.dark) .to-white\/5 {
+  --tw-gradient-to: rgba(88, 28, 135, 0.04) var(--tw-gradient-to-position) !important;
+}
+
+/* -------- Add Habit Modal -------- */
+html:not(.dark) .bg-gradient-to-br.from-slate-800.to-slate-900 {
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.95), rgba(243, 232, 255, 0.95)) !important;
+}
+html:not(.dark) .bg-slate-700\/50 {
+  background-color: rgba(88, 28, 135, 0.1) !important;
+}
+
+/* -------- Pomodoro Overlay -------- */
+html:not(.dark) .bg-black\/80 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
