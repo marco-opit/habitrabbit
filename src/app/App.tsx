@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Sparkles, LogOut } from "lucide-react";
+import { Plus, Search, Sparkles } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { HabitCard } from "./components/HabitCard";
 import { AddHabitModal } from "./components/AddHabitModal";
@@ -15,6 +15,7 @@ import { Habit, Profile } from "./types";
 import { Session } from "@supabase/supabase-js";
 import { calculateLevel } from "../lib/leveling";
 import { PomodoroOverlay } from "./components/PomodoroOverlay";
+import { SettingsMenu } from "./components/SettingsMenu";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -476,6 +477,55 @@ export default function App() {
 
   const handleToggleTimer = () => setIsTimerActive(!isTimerActive);
   const handleResetTimer = () => setTimerTimeLeft(timerMode === "focus" ? 25 * 60 : 5 * 60);
+  const completionRate = habits.length === 0 ? 0 : Math.round((completedToday / habits.length) * 100);
+
+  const handleLogout = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  };
+
+  const handleClearAllData = async () => {
+    if (!supabase || !session || !profile) return;
+
+    const confirmed = window.confirm(
+      "Clear all habits and reset your profile points for this account?"
+    );
+
+    if (!confirmed) return;
+
+    const { error: habitsError } = await supabase
+      .from("habits")
+      .delete()
+      .eq("user_id", session.user.id);
+
+    if (habitsError) {
+      console.error("Failed to clear habits:", habitsError);
+      toast.error("Could not clear your habits. Please try again.");
+      return;
+    }
+
+    const resetProfile = {
+      global_xp: 0,
+      last_consolidated: new Date().toISOString(),
+    };
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update(resetProfile)
+      .eq("id", session.user.id);
+
+    if (profileError) {
+      console.error("Failed to reset profile:", profileError);
+      toast.error("Habits were cleared, but profile reset failed.");
+      return;
+    }
+
+    setHabits([]);
+    setProfile({ ...profile, ...resetProfile });
+    setSearchTerm("");
+    setCurrentPage("habits");
+    toast.success("All data cleared for this account.");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
@@ -546,13 +596,17 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`}</code></pre>
               </p>
             </motion.div>
 
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="absolute -top-2 right-0 md:top-0 p-2 text-white/40 hover:text-white transition-colors bg-white/5 md:bg-transparent rounded-xl"
-              title="Logout"
-            >
-              <LogOut className="w-6 h-6" />
-            </button>
+            {session && (
+              <SettingsMenu
+                session={session}
+                totalHabits={habits.length}
+                totalStreak={totalStreak}
+                completionRate={completionRate}
+                totalPoints={totalPoints}
+                onClearAllData={handleClearAllData}
+                onLogout={handleLogout}
+              />
+            )}
           </div>
 
           {/* Navigation */}

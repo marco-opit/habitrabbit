@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { Trophy, Target, Zap } from "lucide-react";
 import {
   calculateLevel,
+  getLevelTitle,
   getProgressToNextLevel,
   getPointsToNextLevel
 } from "../../lib/leveling";
@@ -24,15 +25,6 @@ export function RewardsDisplay({
   const level = calculateLevel(totalPoints);
   const progressToNextLevel = getProgressToNextLevel(totalPoints);
   const pointsToNext = getPointsToNextLevel(totalPoints);
-
-  const getLevelTitle = (lvl: number) => {
-    if (lvl <= 5) return "Baby Bunny 👶";
-    if (lvl <= 10) return "Agile Hare 🐇";
-    if (lvl <= 20) return "Forest Runner 🌲";
-    if (lvl <= 30) return "Jackrabbit ⚡";
-    if (lvl <= 50) return "Golden Rabbit 🌟";
-    return "Habit Hero 👑";
-  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
