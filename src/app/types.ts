@@ -11,6 +11,7 @@ export interface Habit {
   lastCompleted: string | null;
   completionHistory: string[];
   hasTimer: boolean;
+  category: string;
   createdAt: string;
 }
 
