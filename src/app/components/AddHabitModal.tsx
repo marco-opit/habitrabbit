@@ -187,12 +187,12 @@ export function AddHabitModal({ isOpen, onClose, onAdd }: AddHabitModalProps) {
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
                   >
-                    <option value="Uncategorized">Uncategorized</option>
-                    <option value="Health">Health</option>
-                    <option value="Work">Work</option>
-                    <option value="Personal">Personal</option>
-                    <option value="Fitness">Fitness</option>
-                    <option value="Learning">Learning</option>
+                    <option value="Uncategorized" className="bg-slate-800 text-white">Uncategorized</option>
+                    <option value="Health" className="bg-slate-800 text-white">Health</option>
+                    <option value="Work" className="bg-slate-800 text-white">Work</option>
+                    <option value="Personal" className="bg-slate-800 text-white">Personal</option>
+                    <option value="Fitness" className="bg-slate-800 text-white">Fitness</option>
+                    <option value="Learning" className="bg-slate-800 text-white">Learning</option>
                   </select>
                 </div>
 
