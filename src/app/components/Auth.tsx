@@ -8,7 +8,6 @@ export function Auth() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [isSignUp, setIsSignUp] = useState(false)
-    const [isForgotPassword, setIsForgotPassword] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
     const handleAuth = async (e: React.FormEvent) => {
@@ -17,13 +16,7 @@ export function Auth() {
         setMessage(null)
 
         try {
-            if (isForgotPassword) {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin,
-                })
-                if (error) throw error
-                setMessage({ type: 'success', text: 'If an account exists, a recovery email has been sent.' })
-            } else if (isSignUp) {
+            if (isSignUp) {
                 const { error } = await supabase.auth.signUp({
                     email,
                     password,
@@ -68,7 +61,7 @@ export function Auth() {
                             </h1>
                         </motion.div>
                         <p className="text-white/60 text-lg">
-                            {isForgotPassword ? 'Enter your email to receive a password recovery link' : isSignUp ? 'Join the community of habit builders' : 'Ready for another day of growth?'}
+                            {isSignUp ? 'Join the community of habit builders' : 'Ready for another day of growth?'}
                         </p>
                     </div>
 
@@ -86,35 +79,18 @@ export function Auth() {
                                 />
                             </div>
 
-                            {!isForgotPassword && (
-                                <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-purple-400 transition-colors" />
-                                    <input
-                                        type="password"
-                                        placeholder="Password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full pl-12 pr-4 py-4 bg-white/10 border border-white/10 rounded-2xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white/15 transition-all text-lg"
-                                        required
-                                    />
-                                </div>
-                            )}
-                        </div>
-
-                        {!isForgotPassword && !isSignUp && (
-                            <div className="flex justify-end pr-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsForgotPassword(true);
-                                        setMessage(null);
-                                    }}
-                                    className="text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors hover:underline underline-offset-4"
-                                >
-                                    Forgot Password?
-                                </button>
+                            <div className="relative group">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 group-focus-within:text-purple-400 transition-colors" />
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-4 bg-white/10 border border-white/10 rounded-2xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white/15 transition-all text-lg"
+                                    required
+                                />
                             </div>
-                        )}
+                        </div>
 
                         {message && (
                             <motion.div
@@ -135,10 +111,6 @@ export function Auth() {
                         >
                             {loading ? (
                                 <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : isForgotPassword ? (
-                                <>
-                                    <Mail className="w-6 h-6" /> Send Recovery Email
-                                </>
                             ) : isSignUp ? (
                                 <>
                                     <UserPlus className="w-6 h-6" /> Sign Up Free
@@ -152,33 +124,16 @@ export function Auth() {
                     </form>
 
                     <div className="mt-8 text-center">
-                        {isForgotPassword ? (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsForgotPassword(false);
-                                    setMessage(null);
-                                }}
-                                className="text-white/40 hover:text-white text-sm font-medium transition-all group"
-                            >
-                                <span>Remember your password? <span className="text-purple-400 group-hover:text-purple-300 transition-colors underline-offset-4 hover:underline">Log In</span></span>
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsSignUp(!isSignUp);
-                                    setMessage(null);
-                                }}
-                                className="text-white/40 hover:text-white text-sm font-medium transition-all group"
-                            >
-                                {isSignUp ? (
-                                    <span>Already have an account? <span className="text-purple-400 group-hover:text-purple-300 transition-colors underline-offset-4 hover:underline">Log In</span></span>
-                                ) : (
-                                    <span>Don't have an account? <span className="text-purple-400 group-hover:text-purple-300 transition-colors underline-offset-4 hover:underline">Create Account</span></span>
-                                )}
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setIsSignUp(!isSignUp)}
+                            className="text-white/40 hover:text-white text-sm font-medium transition-all group"
+                        >
+                            {isSignUp ? (
+                                <span>Already have an account? <span className="text-purple-400 group-hover:text-purple-300 transition-colors underline-offset-4 hover:underline">Log In</span></span>
+                            ) : (
+                                <span>Don't have an account? <span className="text-purple-400 group-hover:text-purple-300 transition-colors underline-offset-4 hover:underline">Create Account</span></span>
+                            )}
+                        </button>
                     </div>
                 </div>
             </motion.div>
