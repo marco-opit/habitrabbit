@@ -59,7 +59,7 @@ export function SettingsMenu({
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="absolute -top-2 right-0 md:top-0 rounded-2xl border border-white/10 bg-white/5 p-3 text-white/60 transition-colors hover:text-white"
+          className="rounded-2xl border border-white/10 bg-white/5 p-3 text-white/60 transition-colors hover:text-white"
           title="Settings"
         >
           <Settings className="h-5 w-5" />

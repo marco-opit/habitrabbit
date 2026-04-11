@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Sparkles } from "lucide-react";
+import { Plus, Search, Sparkles, Sun, Moon } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { HabitCard } from "./components/HabitCard";
 import { AddHabitModal } from "./components/AddHabitModal";
@@ -91,6 +91,27 @@ export default function App() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [currentPage, setCurrentPage] = useState<"habits" | "dashboard">("habits");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem("habitrabbit-theme");
+    return saved !== null ? saved === "dark" : true;
+  });
+
+  // Apply dark/light mode to <html>
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add("dark");
+      root.style.removeProperty("--background");
+      root.style.removeProperty("--foreground");
+    } else {
+      root.classList.remove("dark");
+      root.style.setProperty("--background", "#eeeeee");
+      root.style.setProperty("--foreground", "#000000");
+    }
+    localStorage.setItem("habitrabbit-theme", isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   // Load habits and profile from Supabase
   useEffect(() => {
@@ -549,7 +570,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+    <div
+      className="min-h-screen relative overflow-hidden transition-colors duration-500"
+      style={isDarkMode
+        ? { background: 'linear-gradient(to bottom right, #0f172a, #3b0764, #0f172a)' }
+        : { background: 'linear-gradient(to bottom right, #f5f3ff, #ede9fe, #fdf4ff)' }
+      }
+    >
       <Toaster closeButton expand richColors />
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -614,22 +641,45 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key`}</code></pre>
                   <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
                 </div>
               </div>
-              <p className="text-white/60 text-base md:text-lg px-4">
+              <p
+                className="text-base md:text-lg px-4"
+                style={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(88,28,135,0.7)' }}
+              >
                 Build better habits, one day at a time
               </p>
             </motion.div>
 
-            {session && (
-              <SettingsMenu
-                session={session}
-                totalHabits={habits.length}
-                totalStreak={totalStreak}
-                completionRate={completionRate}
-                totalPoints={totalPoints}
-                onClearAllData={handleClearAllData}
-                onLogout={handleLogout}
-              />
-            )}
+            <div className="absolute -top-2 right-0 md:top-0 flex items-center gap-1">
+              {/* Dark/Light Mode Toggle */}
+              <button
+                id="theme-toggle-btn"
+                onClick={toggleTheme}
+                className="p-2 rounded-xl transition-all duration-300 hover:scale-110"
+                style={isDarkMode
+                  ? { color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)' }
+                  : { color: '#f59e0b', background: 'rgba(0,0,0,0.08)' }
+                }
+                title={isDarkMode ? "Passa alla modalità chiara" : "Passa alla modalità scura"}
+              >
+                {isDarkMode ? (
+                  <Sun className="w-6 h-6" />
+                ) : (
+                  <Moon className="w-6 h-6" />
+                )}
+              </button>
+
+              {session && (
+                <SettingsMenu
+                  session={session}
+                  totalHabits={habits.length}
+                  totalStreak={totalStreak}
+                  completionRate={completionRate}
+                  totalPoints={totalPoints}
+                  onClearAllData={handleClearAllData}
+                  onLogout={handleLogout}
+                />
+              )}
+            </div>
           </div>
 
           {/* Navigation */}
